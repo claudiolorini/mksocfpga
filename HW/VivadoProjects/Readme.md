@@ -25,6 +25,16 @@ If a board is not SoM and is directly used, you can omit the carrier folder. Thi
 was done because I have three unique carriers for the same SoM, and it looked
 cleaner on disk than a flatter file structure (i.e., 1 per config).
 
+## Add board definition files
+Prior to build the FPGA bitfile, Vivado must be configured to recognize the 
+hardware platform to use. To do so you need to add to the 
+.Xilinx/Vivado/2015.4/init.tcl in the home directory where to look for board 
+definition files 
+
+```
+set_param board.repoPaths [list "....../mksocfpga/HW/VivadoProjects/board_files/"]
+```
+
 # Building a project
 Call make\_bitfile.sh from the VivadoProjects directory. The argument should be 
 the path to the config file of the bitfile you want to build. Example:
