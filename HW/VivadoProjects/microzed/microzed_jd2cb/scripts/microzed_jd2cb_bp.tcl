@@ -77,7 +77,7 @@ set proj_dir [get_property directory [current_project]]
 
 # Set project properties
 set obj [get_projects microzed_jd2cb]
-set_property "board_part" "em.avnet.com:microzed_7010:part0:1.1" $obj
+set_property "board_part" "em.avnet.com:microzed_7010:part0:1.0" $obj
 set_property "default_lib" "xil_defaultlib" $obj
 set_property "sim.ip.auto_export_scripts" "1" $obj
 set_property "simulator_language" "Mixed" $obj

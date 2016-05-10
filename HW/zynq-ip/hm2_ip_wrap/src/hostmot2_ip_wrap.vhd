@@ -144,7 +144,7 @@ begin
       ClockMed => ClockMed,
       ClockLow => ClockLow,
       BoardNameLow => BoardNameMesa,
-      BoardNameHigh => x"4A444342",
+      BoardNameHigh => x"4243444A",
       FPGASize => FPGASize,
       FPGAPins => FPGAPins,
       IOPorts => IOPorts,
