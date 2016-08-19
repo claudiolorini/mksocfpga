@@ -4,3 +4,5 @@ webtalk*
 *.log
 all.bif
 *.bit
+*.bit.bin
+firmware_id.mif

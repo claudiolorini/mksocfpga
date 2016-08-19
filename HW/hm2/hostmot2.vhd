@@ -66,12 +66,10 @@ use IEEE.std_logic_UNSIGNED.ALL;
 --     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --     POSSIBILITY OF SUCH DAMAGE.
 --
-use work.PIN_G540x2_34.all;
 use work.IDROMConst.all;
 use work.log2.all;
 use work.decodedstrobe.all;
 use work.oneofndecode.all;
-use work.IDROMConst.all;
 use work.NumberOfModules.all;
 use work.MaxPinsPerModule.all;
 use work.MaxInputPinsPerModule.all;
@@ -85,43 +83,43 @@ use work.ModuleExists.all;
 entity HostMot2 is
   	generic
 	(
-		ThePinDesc: PinDescType := PinDesc;
-		TheModuleID: ModuleIDType := ModuleID;
-		IDROMType: integer := 3;
-	   SepClocks: boolean := true;
-		OneWS: boolean := true;
-		UseStepGenPrescaler : boolean := true;
-		UseIRQLogic: boolean := true;
-		PWMRefWidth: integer := 13;
-		UseWatchDog: boolean := true;
-		OffsetToModules: integer := 64;
-		OffsetToPinDesc: integer := 448;
-		ClockHigh: integer := ClockHigh25;
-		ClockMed: integer := ClockMed25;
-		ClockLow: integer := ClockMed20;
-		BoardNameLow : std_Logic_Vector(31 downto 0) := BoardNameMESA;
-		BoardNameHigh : std_Logic_Vector(31 downto 0) := BoardName5i25;
-		FPGASize: integer := 9;
-		FPGAPins: integer := 144;
-		IOPorts: integer := 2;
-		IOWidth: integer := 34;
-		LIOWidth: integer := 6;
-		PortWidth: integer := 17;
-		BusWidth: integer := 32;
-		AddrWidth: integer := 16;
-		InstStride0: integer := 4;
-		InstStride1: integer := 64;
-		RegStride0: integer := 256;
-		RegStride1: integer := 256;
-		LEDCount: integer := 2
+		ThePinDesc: PinDescType;
+		TheModuleID: ModuleIDType;
+		IDROMType: integer;
+		SepClocks: boolean;
+		OneWS: boolean;
+		UseStepGenPrescaler: boolean;
+		UseIRQLogic: boolean;
+		PWMRefWidth: integer;
+		UseWatchDog: boolean;
+		OffsetToModules: integer;
+		OffsetToPinDesc: integer;
+		ClockHigh: integer;
+		ClockMed: integer;
+		ClockLow: integer;
+		BoardNameLow : std_Logic_Vector(31 downto 0);
+		BoardNameHigh : std_Logic_Vector(31 downto 0);
+		FPGASize: integer;
+		FPGAPins: integer;
+		IOPorts: integer;
+		IOWidth: integer;
+		LIOWidth: integer;
+		PortWidth: integer;
+		BusWidth: integer;
+		AddrWidth: integer;
+		InstStride0: integer;
+		InstStride1: integer;
+		RegStride0: integer;
+		RegStride1: integer;
+		LEDCount: integer
 		);
 	port
    (
      -- Generic 32  bit bus interface signals --
 
-	ibus: in std_logic_vector(buswidth -1 downto 0);
-	obus: out std_logic_vector(buswidth -1 downto 0);
-	addr: in std_logic_vector(addrwidth -1 downto 2);
+	ibus: in std_logic_vector(BusWidth -1 downto 0);
+	obus: out std_logic_vector(BusWidth -1 downto 0);
+	addr: in std_logic_vector(AddrWidth -1 downto 2);
 	readstb: in std_logic;
 	writestb: in std_logic;
 	clklow: in std_logic;
@@ -130,10 +128,11 @@ entity HostMot2 is
 	int: out std_logic;
 	dreq: out std_logic;
 	demandmode: out std_logic;
-	iobits: inout std_logic_vector (iowidth -1 downto 0);
-	liobits: inout std_logic_vector (liowidth -1 downto 0);
+	iobits: inout std_logic_vector (IOWidth -1 downto 0);
+  ioddrbits : out std_logic_vector (IOWidth -1 downto 0);
+	liobits: inout std_logic_vector (LIOWidth -1 downto 0);
 	rates: out std_logic_vector (4 downto 0);
-	leds: out std_logic_vector(ledcount-1 downto 0)
+	leds: out std_logic_vector(LEDCount-1 downto 0)
 	);
 end HostMot2;
 
@@ -145,6 +144,7 @@ architecture dataflow of HostMot2 is
 -- decodes --
 --	IDROM related signals
 	-- Extract the number of modules of each type from the ModuleID
+constant FWIDs: integer := NumberOfModules(TheModuleID,FWIDTag);
 constant StepGens: integer := NumberOfModules(TheModuleID,StepGenTag);
 constant QCounters: integer := NumberOfModules(TheModuleID,QCountTag);
 constant MuxedQCounters: integer := NumberOfModules(TheModuleID,MuxedQCountTag);			-- non-muxed index mask
@@ -199,7 +199,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 -- all these signals should be put in per module components
 -- to reduce clutter
 
-	signal A: std_logic_vector(addrwidth -1 downto 2);
+	signal A: std_logic_vector(AddrWidth -1 downto 2);
 	signal LoadIDROM: std_logic;
 	signal ReadIDROM: std_logic;
 
@@ -208,6 +208,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 
 	signal IDROMWEn: std_logic_vector(0 downto 0);
 	signal ROMAdd: std_logic_vector(7 downto 0);
+
+	signal ReadFWID: std_logic;
 
 -- I/O port related signals
 
@@ -303,7 +305,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			loadinvert => LoadOutputInvCmd(i),
 			readddr => ReadDDRCmd(i),
 			portdata => IOBits((((i+1)*PortWidth) -1) downto (i*PortWidth)),
-			altdata => Altdata((((i+1)*PortWidth) -1) downto (i*PortWidth))
+			altdata => Altdata((((i+1)*PortWidth) -1) downto (i*PortWidth)),
+      ddrdata => IODDRBits((((i+1)*PortWidth) -1) downto (i*PortWidth))
 			);
 	end generate;
 
@@ -3206,6 +3209,17 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			dout => obus
 		);
 
+	makeFWID : if FWIDs > 0 generate
+	begin
+		FirmwareID : entity work.firmware_id
+			port map (
+				clk  => clklow,
+				re   => ReadFWID,
+				radd => addr(10 downto 2),
+				dout => obus
+			);
+	end generate;
+
    LooseEnds: process(A,clklow)
 	begin
 		if rising_edge(clklow) then
@@ -3350,6 +3364,13 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			LoadLEDs <= '1';
 		else
 			LoadLEDs <= '0';
+		end if;
+
+		--  Firmware ID ProtoBuf Message : 2K Bytes
+		if A(15 downto 11) = FWIDAddr(7 downto 3) and readstb = '1' then
+			ReadFWID <= '1';
+		else
+			ReadFWID <= '0';
 		end if;
 
 	end process;
